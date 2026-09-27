@@ -127,9 +127,9 @@ client.on('interactionCreate', async interaction => {
         if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
         const embed = new EmbedBuilder().setDescription('🗂️ **HỆ THỐNG HỖ TRỢ 24/7**\n\nChọn danh mục bên dưới để mở vé:').setColor(0x2B2D31);
         const menu = new StringSelectMenuBuilder().setCustomId('ticket_select_menu').setPlaceholder('📂 Chọn danh mục hỗ trợ...').addOptions([
-            { label: 'Mua hàng / Dịch vụ (Có VietQR)', value: 'cat_muahang', emoji: '🛒' },
-            { label: 'Báo lỗi kỹ thuật', value: 'cat_baoloi', emoji: '🛠️' },
-            { label: 'Hợp tác / Khác', value: 'cat_khac', emoji: '🤝' }
+            { label: 'Mua hàng / Dịch vụ', value: 'cat_muahang', emoji: '🛒' },
+            { label: 'Hỗ Trợ', value: 'cat_baoloi', emoji: '💭' },
+            { label: 'Hợp tác / Partner', value: 'cat_khac', emoji: '🤝' }
         ]);
         await interaction.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] });
         await interaction.reply({ content: '✅ Đã gửi bảng chọn!', ephemeral: true });
@@ -211,7 +211,7 @@ client.on('messageCreate', async message => {
 
     const text = message.content.toLowerCase();
     if (text.includes('stk') || text.includes('ngân hàng') || text.includes('chuyển khoản')) {
-        await message.reply({ content: '💳 **Thông tin thanh toán:**\n- Ngân hàng: MOMO / MB Bank\n- Số tài khoản: `0123456789`\n- Chủ tài khoản: TÊN CỦA BẠN\n*(Gửi kèm bill vào vé để được xử lý!)*' });
+        await message.reply({ content: '💳 **Thông tin thanh toán:**\n- Ngân hàng: TPBANK\n- Số tài khoản: `31189838888`\n- Chủ tài khoản: LE BAO TRUNG\n*(Gửi kèm bill vào vé để được xử lý!)*' });
     } else if (text.includes('admin') || text.includes('chủ shop')) {
         await message.reply({ content: '👋 Nhân viên đã nhận được thông báo, sẽ phản hồi bạn ngay lập tức!' });
     }
