@@ -126,10 +126,10 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'sendticket') {
         if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
         const embed = new EmbedBuilder().setDescription('🗂️ **HỆ THỐNG HỖ TRỢ 24/7**\n\nChọn danh mục bên dưới để mở vé:').setColor(0x2B2D31);
-        const menu = new StringSelectMenuBuilder().setCustomId('ticket_select_menu').setPlaceholder('📂 Chọn danh mục hỗ trợ...').addOptions([
+        const menu = new StringSelectMenuBuilder().setCustomId('ticket_select_menu').setPlaceholder('📂 Chọn danh mục cần hỗ trợ...').addOptions([
             { label: 'Mua hàng / Dịch vụ', value: 'cat_muahang', emoji: '🛒' },
-            { label: 'Hỗ Trợ', value: 'cat_baoloi', emoji: '💭' },
-            { label: 'Hợp tác / Partner', value: 'cat_khac', emoji: '🤝' }
+            { label: 'Hỗ Trợ', value: 'cat_baoloi', emoji: '💡' },
+            { label: 'Hợp tác / Khác', value: 'cat_khac', emoji: '🤝' }
         ]);
         await interaction.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] });
         await interaction.reply({ content: '✅ Đã gửi bảng chọn!', ephemeral: true });
@@ -269,10 +269,13 @@ client.on('interactionCreate', async interaction => {
 
             let qrContent = `${member} ${pingRoles}`;
             if (categoryType === 'cat_muahang') {
+                // Tạo link VietQR tự động với thông tin TPBANK của má và hiển thị dạng ảnh trực tiếp trên Discord Embed
+                const qrImageUrl = `https://img.vietqr.io/image/TPB-31189838888-compact2.png?amount=0&addInfo=TICKET%20${ticketIdStr}&accountName=LE%20BAO%20TRUNG`;
                 ticketEmbed.addFields({ 
-                    name: '💳 Thanh toán nhanh qua VietQR', 
-                    value: 'Mã QR thanh toán tự động cho tài khoản của bạn:\nhttps://img.vietqr.io/image/MB-0123456789-compact2.png?amount=0&addInfo=TICKET%20' + ticketIdStr + '&accountName=TEN%20CUA%20BAN' 
+                    name: '💳 Thông tin chuyển khoản TPBank', 
+                    value: '- Ngân hàng: **TPBANK**\n- Số tài khoản: `31189838888`\n- Chủ tài khoản: **LE BAO TRUNG**\n- Nội dung: `TICKET ' + ticketIdStr + '`' 
                 });
+                ticketEmbed.setImage(qrImageUrl);
             }
 
             const ticketRow = new ActionRowBuilder().addComponents(
