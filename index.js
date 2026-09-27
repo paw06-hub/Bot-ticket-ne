@@ -126,11 +126,14 @@ client.on('interactionCreate', async interaction => {
     if (commandName === 'sendticket') {
         if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
         const embed = new EmbedBuilder().setDescription('🗂️ **HỆ THỐNG HỖ TRỢ 24/7**\n\nChọn danh mục bên dưới để mở vé:').setColor(0x2B2D31);
+        
+        // Cập nhật danh mục theo yêu cầu mới
         const menu = new StringSelectMenuBuilder().setCustomId('ticket_select_menu').setPlaceholder('📂 Chọn danh mục cần hỗ trợ...').addOptions([
-            { label: 'Mua hàng / Dịch vụ', value: 'cat_muahang', emoji: '🛒' },
-            { label: 'Hỗ Trợ', value: 'cat_baoloi', emoji: '💡' },
-            { label: 'Hợp tác / Khác', value: 'cat_khac', emoji: '🤝' }
+            { label: 'Mua Hàng / Dịch Vụ', value: 'cat_muahang', emoji: '🛍️' },
+            { label: 'Hỗ Trợ', value: 'cat_support', emoji: '💭' },
+            { label: 'Partner / Khác', value: 'cat_partner', emoji: '🤝' }
         ]);
+
         await interaction.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] });
         await interaction.reply({ content: '✅ Đã gửi bảng chọn!', ephemeral: true });
     }
@@ -221,7 +224,6 @@ client.on('interactionCreate', async interaction => {
     const guild = interaction.guild;
     const member = interaction.member;
     const channel = interaction.channel;
-    const logChannelId = serverLogChannels.get(guild.id);
 
     if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
         const categoryType = interaction.values[0];
@@ -262,14 +264,15 @@ client.on('interactionCreate', async interaction => {
             });
 
             const pingRoles = roleIds.map(id => `<@&${id}>`).join(' ');
+            
             const ticketEmbed = new EmbedBuilder()
-                .setTitle(`🎫 TICKET #${ticketIdStr} - ${categoryType.toUpperCase()}`)
+                .setTitle(`🎫 TICKET #${ticketIdStr}`)
                 .setDescription(`Chào ${member}, vé số #${ticketIdStr} đã được tạo!\n💡 *Mẹo: Gõ "stk" để nhận thông tin chuyển khoản.*`)
                 .setColor(0x2B2D31);
 
             let qrContent = `${member} ${pingRoles}`;
-            if (categoryType === 'Tick Mua Hàng') {
-                // Tạo link VietQR tự động với thông tin TPBANK của má và hiển thị dạng ảnh trực tiếp trên Discord Embed
+            // Chỉ hiện mã QR nếu chọn danh mục Mua Hàng / Dịch Vụ
+            if (categoryType === 'cat_muahang') {
                 const qrImageUrl = `https://img.vietqr.io/image/TPB-31189838888-compact2.png?amount=0&addInfo=TICKET%20${ticketIdStr}&accountName=LE%20BAO%20TRUNG`;
                 ticketEmbed.addFields({ 
                     name: '💳 Thông tin chuyển khoản TPBank', 
