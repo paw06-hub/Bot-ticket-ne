@@ -1,0 +1,13 @@
+{
+  "name": "discord-role-bot",
+  "version": "1.0.0",
+  "description": "Bot auto role 24/7 trên Render",
+  "main": "role-bot.js",
+  "scripts": {
+    "start": "node role-bot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.14.0",
+    "express": "^4.19.2"
+  }
+}
