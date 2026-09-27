@@ -1,171 +1,414 @@
 const { 
     Client, 
     GatewayIntentBits, 
-    PermissionFlagsBits, 
+    ActionRowBuilder, 
+    ButtonBuilder, 
+    StringSelectMenuBuilder, 
+    ButtonStyle, 
+    ChannelType, 
+    PermissionsBitField, 
     EmbedBuilder, 
     REST, 
     Routes, 
-    SlashCommandBuilder 
+    SlashCommandBuilder,
+    AttachmentBuilder,
+    ModalBuilder,
+    TextInputBuilder,
+    TextInputStyle 
 } = require('discord.js');
 const express = require('express');
 
-// Khởi tạo Express server để giữ bot sống 24/7 trên Render
+// Khởi tạo Express web server để Render duy trì hoạt động 24/7
 const app = express();
 const PORT = process.env.PORT || 3000;
-
 app.get('/', (req, res) => {
-    res.send('Bot Role đang hoạt động ổn định!');
+    res.send('🤖 Ticket Bot is running 24/7 on Render!');
 });
-
 app.listen(PORT, () => {
-    console.log(`Server web đang chạy trên cổng ${PORT}`);
+    console.log(`🌐 Web server đang lắng nghe tại cổng ${PORT}`);
 });
 
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMessageReactions,
-    ],
+        GatewayIntentBits.MessageContent
+    ]
 });
 
-// ================= CẤU HÌNH CHO BOT AUTO ROLE =================
-// Khi đưa lên Render, bạn nên cấu hình Biến môi trường (Environment Variables) 
-// để bảo mật Token thay vì viết cứng vào code nhé!
-const DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'ĐIỀN_TOKEN_BOT_2_VÀO_ĐÂY';
-const CLIENT_ID = process.env.CLIENT_ID || 'ĐIỀN_CLIENT_ID_CỦA_BOT_VÀO_ĐÂY';
-const OWNER_ID = process.env.OWNER_ID || 'ĐIỀN_ID_DISCORD_CỦA_BẠN_VÀO_ĐÂY';
-// =============================================================
+// ==================== CẤU HÌNH BOT (ĐỌC TỪ BIẾN MÔI TRƯỜNG RENDER) ====================
+const DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'ĐIỀN_TOKEN_BOT_CỦA_BẠN_Ở_ĐÂY'; 
+const CLIENT_ID = process.env.CLIENT_ID || 'ĐIỀN_CLIENT_ID_CỦA_BOT_Ở_ĐÂY'; 
+const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID || 'ĐIỀN_ID_CATEGORY_VÀO_ĐÂY'; 
+// ====================================================================================
 
-// Nhóm 1: 12 role game ban đầu
-const roleConfig1 = [
-    { emoji: '9_ygame_lienquan', emojiId: '1553138867127975986', roleId: '1553120963435044884', text: '<:9_ygame_lienquan:1553138867127975986> <@&1553120963435044884>' },
-    { emoji: '9_ygame_tft', emojiId: '1553138907212677140', roleId: '1553121311713140786', text: '<:9_ygame_tft:1553138907212677140> <@&1553121311713140786>' },
-    { emoji: 'Minecraft', emojiId: '1553139630516347034', roleId: '1553121044057817130', text: '<:Minecraft:1553139630516347034> <@&1553121044057817130>' },
-    { emoji: 'amongus', emojiId: '1553317362843779113', roleId: '1553121507373351074', text: '<:amongus:1553317362843779113> <@&1553121507373351074>' },
-    { emoji: 'cs2', emojiId: '1553316893861875785', roleId: '1553121125867716729', text: '<:cs2:1553316893861875785> <@&1553121125867716729>' },
-    { emoji: 'freefire', emojiId: '1553316932114194522', roleId: '1553121167336800287', text: '<:freefire:1553316932114194522> <@&1553121167336800287>' },
-    { emoji: 'lienminh', emojiId: '1553139604893474906', roleId: '1553121085656932466', text: '<:lienminh:1553139604893474906> <@&1553121085656932466>' },
-    { emoji: 'ple', emojiId: '1553316967543349332', roleId: '1553121599291400293', text: '<:ple:1553316967543349332> <@&1553121599291400293>' },
-    { emoji: 'roblox', emojiId: '1553139536408748034', roleId: '1553121240330535002', text: '<:roblox:1553139536408748034> <@&1553121240330535002>' },
-    { emoji: 'steam91', emojiId: '1553139045150761040', roleId: '1553121280365035611', text: '<:steam91:1553139045150761040> <@&1553121280365035611>' },
-    { emoji: '9_ygame_gta5', emojiId: '1553771929238904913', roleId: '1553768841270530048', text: '<:9_ygame_gta5:1553771929238904913> <@&1553768841270530048>' },
-    { emoji: 'KannaWhat', emojiId: '1553774065624424568', roleId: '1553773720181416107', text: '<:KannaWhat:1553774065624424568> <@&1553773720181416107>' }
-];
+const serverSupportRoles = new Map();
+const serverLogChannels = new Map();
+const ticketCounters = new Map(); 
 
-// Nhóm 2: 3 role đặc biệt
-const roleConfig2 = [
-    { emoji: 'abowblue2', emojiId: '1553325325293719562', roleId: '1553122069733187695', text: '<a:abowblue2:1553325325293719562> <@&1553122069733187695>' },
-    { emoji: 'abowpink94', emojiId: '1553325355337785435', roleId: '1553122100691079208', text: '<a:abowpink94:1553325355337785435> <@&1553122100691079208>' },
-    { emoji: 'lgbtqheart', emojiId: '1553326497849151498', roleId: '1553122149391273984', text: '<a:lgbtqheart:1553326497849151498> <@&1553122149391273984>' }
-];
+const userWarns = new Map();       
+const ticketNotes = new Map();     
+const userTicketHistory = new Map(); 
+const staffStats = new Map();      
+const ticketCooldowns = new Map(); 
+const totalResolvedTickets = new Map(); 
 
-// Đăng ký 2 lệnh Slash Command chính
 const commands = [
-    new SlashCommandBuilder()
-        .setName('reaction')
-        .setDescription('Gửi bảng 12 role game ban đầu'),
-    
-    new SlashCommandBuilder()
-        .setName('reaction2')
-        .setDescription('Gửi bảng 3 role đặc biệt')
+    new SlashCommandBuilder().setName('addrole').setDescription('Thêm Role hỗ trợ').addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true)),
+    new SlashCommandBuilder().setName('setlog').setDescription('Cài kênh log').addChannelOption(o => o.setName('channel').setDescription('Kênh').addChannelTypes(ChannelType.GuildText).setRequired(true)),
+    new SlashCommandBuilder().setName('sendticket').setDescription('Gửi bảng tạo ticket'),
+    new SlashCommandBuilder().setName('add').setDescription('Thêm người vào vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    new SlashCommandBuilder().setName('remove').setDescription('Xóa người khỏi vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    new SlashCommandBuilder().setName('transfer').setDescription('Chuyển vé cho staff').addUserOption(o => o.setName('staff').setDescription('Staff').setRequired(true)),
+    new SlashCommandBuilder().setName('warn').setDescription('Cảnh báo thành viên trong vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    new SlashCommandBuilder().setName('note').setDescription('Thêm ghi chú nội bộ cho staff').addStringOption(o => o.setName('content').setDescription('Nội dung').setRequired(true)),
+    new SlashCommandBuilder().setName('checkticket').setDescription('Kiểm tra lịch sử vé của user').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
+    new SlashCommandBuilder().setName('topstaff').setDescription('Xem bảng xếp hạng staff xuất sắc'),
+    new SlashCommandBuilder().setName('rename').setDescription('Đổi tên kênh ticket hiện tại').addStringOption(o => o.setName('name').setDescription('Tên mới cho kênh').setRequired(true)),
+    new SlashCommandBuilder().setName('ticketstats').setDescription('Xem thống kê tổng quan hệ thống ticket của server')
 ].map(command => command.toJSON());
 
+const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+
 client.once('ready', async () => {
-    console.log(`[Bot Role] Đã đăng nhập: ${client.user.tag}!`);
-    const rest = new REST({ version: '10' }).setToken(DISCORD_TOKEN);
+    console.log(`🤖 Bot đã sẵn sàng! Đăng nhập: ${client.user.tag}`);
     try {
         await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
-        console.log('Đã cập nhật lệnh /reaction và /reaction2 thành công!');
-    } catch (error) {
-        console.error(error);
-    }
+        console.log('✅ Đã đăng ký tất cả lệnh thành công!');
+    } catch (error) { console.error(error); }
 });
 
-client.on('interactionCreate', async (interaction) => {
+async function generateTranscript(channel) {
+    let messages = [];
+    let lastId;
+    while (true) {
+        const fetched = await channel.messages.fetch({ limit: 100, ...(lastId && { before: lastId }) });
+        if (fetched.size === 0) break;
+        messages.push(...fetched.values());
+        lastId = fetched.lastKey();
+        if (fetched.size < 100) break;
+    }
+    messages.reverse();
+    let text = `=== LỊCH SỬ TICKET: ${channel.name} ===\n\n`;
+    for (const msg of messages) {
+        text += `[${msg.createdAt.toLocaleString()}] ${msg.author.tag}: ${msg.content}\n`;
+    }
+    const notes = ticketNotes.get(channel.id);
+    if (notes && notes.length > 0) {
+        text += `\n=== GHI CHÚ NỘI BỘ STAFF ===\n` + notes.join('\n');
+    }
+    return Buffer.from(text, 'utf-8');
+}
+
+client.on('interactionCreate', async interaction => {
     if (!interaction.isChatInputCommand()) return;
 
-    const { commandName } = interaction;
-    const isOwner = interaction.user.id === OWNER_ID;
-    const isAdmin = interaction.member.permissions.has(PermissionFlagsBits.Administrator);
+    const { commandName, guild, member, channel } = interaction;
+    const guildId = guild.id;
 
-    if (!isOwner && !isAdmin) {
-        return interaction.reply({ content: '❌ Bạn không có quyền sử dụng lệnh này!', ephemeral: true });
+    if (commandName === 'addrole') {
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
+        const role = interaction.options.getRole('role');
+        if (!serverSupportRoles.has(guildId)) serverSupportRoles.set(guildId, []);
+        const list = serverSupportRoles.get(guildId);
+        if (list.includes(role.id)) return interaction.reply({ content: '⚠️ Đã có rồi!', ephemeral: true });
+        list.push(role.id);
+        await interaction.reply({ content: `✅ Đã thêm ${role.name}!`, ephemeral: true });
     }
 
-    if (commandName === 'reaction') {
-        await interaction.deferReply({ ephemeral: true });
-        let desc = 'Thả cảm xúc vào các icon bên dưới để nhận hoặc hủy role game tương ứng:\n\n';
-        roleConfig1.forEach(i => desc += `${i.text}\n`);
-        const embed = new EmbedBuilder().setColor('#FF4500').setTitle('🎮 CHỌN ROLE THÔNG BÁO GAME').setDescription(desc);
-        const sentMsg = await interaction.channel.send({ embeds: [embed] });
-        for (const i of roleConfig1) {
-            await sentMsg.react(`${i.emoji}:${i.emojiId}`).catch(() => {});
-        }
-        await interaction.editReply({ content: '✅ Đã tạo bảng reaction thành công!' });
+    if (commandName === 'setlog') {
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
+        const logChan = interaction.options.getChannel('channel');
+        serverLogChannels.set(guildId, logChan.id);
+        await interaction.reply({ content: `✅ Đã đặt kênh log tại ${logChan.name}!`, ephemeral: true });
     }
 
-    if (commandName === 'reaction2') {
-        await interaction.deferReply({ ephemeral: true });
-        let desc = 'Thả cảm xúc vào các icon bên dưới để nhận hoặc hủy các vai trò đặc biệt:\n\n';
-        roleConfig2.forEach(i => desc += `${i.text}\n`);
-        const embed = new EmbedBuilder().setColor('#00FFFF').setTitle('✨ CHỌN VAI TRÒ ĐẶC BIỆT').setDescription(desc);
-        const sentMsg = await interaction.channel.send({ embeds: [embed] });
-        for (const i of roleConfig2) {
-            await sentMsg.react(`${i.emoji}:${i.emojiId}`).catch(() => {});
+    if (commandName === 'sendticket') {
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
+        const embed = new EmbedBuilder().setDescription('🗂️ **HỆ THỐNG HỖ TRỢ 24/7**\n\nChọn danh mục bên dưới để mở vé:').setColor(0x2B2D31);
+        const menu = new StringSelectMenuBuilder().setCustomId('ticket_select_menu').setPlaceholder('📂 Chọn danh mục hỗ trợ...').addOptions([
+            { label: 'Mua hàng / Dịch vụ (Có VietQR)', value: 'cat_muahang', emoji: '🛒' },
+            { label: 'Báo lỗi kỹ thuật', value: 'cat_baoloi', emoji: '🛠️' },
+            { label: 'Hợp tác / Khác', value: 'cat_khac', emoji: '🤝' }
+        ]);
+        await interaction.channel.send({ embeds: [embed], components: [new ActionRowBuilder().addComponents(menu)] });
+        await interaction.reply({ content: '✅ Đã gửi bảng chọn!', ephemeral: true });
+    }
+
+    if (commandName === 'add') {
+        const user = interaction.options.getUser('user');
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        await channel.permissionOverwrites.edit(user.id, { ViewChannel: true, SendMessages: true });
+        await interaction.reply({ content: `✅ Đã thêm ${user}!` });
+    }
+
+    if (commandName === 'remove') {
+        const user = interaction.options.getUser('user');
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        await channel.permissionOverwrites.delete(user.id);
+        await interaction.reply({ content: `✅ Đã xóa ${user}!` });
+    }
+
+    if (commandName === 'transfer') {
+        const staff = interaction.options.getUser('staff');
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        await channel.permissionOverwrites.edit(staff.id, { ViewChannel: true, SendMessages: true });
+        await interaction.reply({ content: `🔄 Đã chuyển giao cho ${staff}!` });
+    }
+
+    if (commandName === 'warn') {
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        const user = interaction.options.getUser('user');
+        let warns = userWarns.get(user.id) || 0;
+        warns++;
+        userWarns.set(user.id, warns);
+        await interaction.reply({ content: `⚠️ Đã cảnh báo ${user}. Tổng số lần vi phạm: **${warns}**` });
+    }
+
+    if (commandName === 'note') {
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        const content = interaction.options.getString('content');
+        if (!ticketNotes.has(channel.id)) ticketNotes.set(channel.id, []);
+        ticketNotes.get(channel.id).push(`[${new Date().toLocaleString()}] ${member.user.tag}: ${content}`);
+        await interaction.reply({ content: '📝 Đã lưu ghi chú nội bộ!', ephemeral: true });
+    }
+
+    if (commandName === 'checkticket') {
+        const user = interaction.options.getUser('user');
+        const count = userTicketHistory.get(user.id) || 0;
+        const warns = userWarns.get(user.id) || 0;
+        await interaction.reply({ content: `📊 **Thông tin của ${user.tag}:**\n- Số vé từng mở: **${count} vé**\n- Số lần cảnh báo: **${warns} lần**`, ephemeral: true });
+    }
+
+    if (commandName === 'topstaff') {
+        if (staffStats.size === 0) return interaction.reply({ content: '📊 Chưa có dữ liệu staff!', ephemeral: true });
+        let sorted = [...staffStats.entries()].sort((a, b) => b[1].stars - a[1].stars);
+        let text = '🏆 **BẢNG XẾP HẠNG STAFF XUẤT SẮC**\n\n';
+        let i = 1;
+        for (const [sId, data] of sorted) {
+            text += `${i++}. <@${sId}> — **${data.stars} sao** (${data.claims} vé)\n`;
         }
-        await interaction.editReply({ content: '✅ Đã tạo bảng reaction 2 thành công!' });
+        await interaction.reply({ content: text });
+    }
+
+    if (commandName === 'rename') {
+        if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Chỉ dùng trong kênh vé!', ephemeral: true });
+        if (!member.permissions.has(PermissionsBitField.Flags.ManageChannels)) return interaction.reply({ content: '❌ Thiếu quyền quản lý kênh!', ephemeral: true });
+        const newName = interaction.options.getString('name');
+        await channel.setName(newName);
+        await interaction.reply({ content: `✅ Đã đổi tên kênh thành: **${newName}**` });
+    }
+
+    if (commandName === 'ticketstats') {
+        const openTickets = guild.channels.cache.filter(c => c.name.includes('ticket-')).size;
+        const resolved = totalResolvedTickets.get(guild.id) || 0;
+        await interaction.reply({ content: `📈 **THỐNG KÊ HỆ THỐNG TICKET SERVER:**\n- Số vé đang mở hiện tại: **${openTickets} vé**\n- Tổng số vé đã xử lý & đóng: **${resolved} vé**`, ephemeral: true });
     }
 });
 
-// Xử lý thêm role khi thả reaction
-client.on('messageReactionAdd', async (reaction, user) => {
-    if (user.bot) return;
-    if (reaction.partial) await reaction.fetch().catch(() => {});
+client.on('messageCreate', async message => {
+    if (message.author.bot || !message.channel.name.includes('ticket-')) return;
 
-    const emojiId = reaction.emoji.id;
-    const allConfigs = [...roleConfig1, ...roleConfig2];
-    const found = allConfigs.find(item => item.emojiId === emojiId);
-
-    if (!found) return;
-
-    const guild = reaction.message.guild;
-    if (!guild) return;
-
-    try {
-        const member = await guild.members.fetch(user.id);
-        const role = guild.roles.cache.get(found.roleId);
-        if (role && !member.roles.cache.has(role.id)) {
-            await member.roles.add(role);
-        }
-    } catch (error) {
-        console.error(error);
+    const text = message.content.toLowerCase();
+    if (text.includes('stk') || text.includes('ngân hàng') || text.includes('chuyển khoản')) {
+        await message.reply({ content: '💳 **Thông tin thanh toán:**\n- Ngân hàng: MOMO / MB Bank\n- Số tài khoản: `0123456789`\n- Chủ tài khoản: TÊN CỦA BẠN\n*(Gửi kèm bill vào vé để được xử lý!)*' });
+    } else if (text.includes('admin') || text.includes('chủ shop')) {
+        await message.reply({ content: '👋 Nhân viên đã nhận được thông báo, sẽ phản hồi bạn ngay lập tức!' });
     }
 });
 
-// Xử lý gỡ role khi bỏ reaction
-client.on('messageReactionRemove', async (reaction, user) => {
-    if (user.bot) return;
-    if (reaction.partial) await reaction.fetch().catch(() => {});
+client.on('interactionCreate', async interaction => {
+    const guild = interaction.guild;
+    const member = interaction.member;
+    const channel = interaction.channel;
+    const logChannelId = serverLogChannels.get(guild.id);
 
-    const emojiId = reaction.emoji.id;
-    const allConfigs = [...roleConfig1, ...roleConfig2];
-    const found = allConfigs.find(item => item.emojiId === emojiId);
+    if (interaction.isStringSelectMenu() && interaction.customId === 'ticket_select_menu') {
+        const categoryType = interaction.values[0];
+        const roleIds = serverSupportRoles.get(guild.id) || [];
 
-    if (!found) return;
+        const lastTime = ticketCooldowns.get(member.id) || 0;
+        const now = Date.now();
+        if (now - lastTime < 30000) {
+            const remaining = Math.ceil((30000 - (now - lastTime)) / 1000);
+            return interaction.reply({ content: `⏳ Vui lòng chờ **${remaining} giây** nữa mới được mở vé tiếp theo để tránh spam!`, ephemeral: true });
+        }
+        ticketCooldowns.set(member.id, now);
 
-    const guild = reaction.message.guild;
-    if (!guild) return;
+        let userTotal = userTicketHistory.get(member.id) || 0;
+        userTicketHistory.set(member.id, ++userTotal);
+
+        await interaction.deferReply({ ephemeral: true });
+
+        try {
+            let currentCount = ticketCounters.get(guild.id) || 0;
+            currentCount++;
+            ticketCounters.set(guild.id, currentCount);
+            const ticketIdStr = String(currentCount).padStart(3, '0');
+
+            const permissionOverwrites = [
+                { id: guild.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+                { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
+                { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageChannels] }
+            ];
+
+            roleIds.forEach(id => permissionOverwrites.push({ id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }));
+
+            const ticketChannel = await guild.channels.create({
+                name: `ticket-${ticketIdStr}`,
+                type: ChannelType.GuildText,
+                parent: TICKET_CATEGORY_ID || null,
+                permissionOverwrites,
+            });
+
+            const pingRoles = roleIds.map(id => `<@&${id}>`).join(' ');
+            const ticketEmbed = new EmbedBuilder()
+                .setTitle(`🎫 TICKET #${ticketIdStr} - ${categoryType.toUpperCase()}`)
+                .setDescription(`Chào ${member}, vé số #${ticketIdStr} đã được tạo!\n💡 *Mẹo: Gõ "stk" để nhận thông tin chuyển khoản.*`)
+                .setColor(0x2B2D31);
+
+            let qrContent = `${member} ${pingRoles}`;
+            if (categoryType === 'cat_muahang') {
+                ticketEmbed.addFields({ 
+                    name: '💳 Thanh toán nhanh qua VietQR', 
+                    value: 'Mã QR thanh toán tự động cho tài khoản của bạn:\nhttps://img.vietqr.io/image/MB-0123456789-compact2.png?amount=0&addInfo=TICKET%20' + ticketIdStr + '&accountName=TEN%20CUA%20BAN' 
+                });
+            }
+
+            const ticketRow = new ActionRowBuilder().addComponents(
+                new ButtonBuilder().setCustomId('close_ticket').setLabel('Đóng vé').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
+                new ButtonBuilder().setCustomId('claim_ticket').setLabel('Nhận vé').setStyle(ButtonStyle.Secondary).setEmoji('🎟️'),
+                new ButtonBuilder().setCustomId('unclaim_ticket').setLabel('Hủy nhận').setStyle(ButtonStyle.Secondary).setEmoji('↩️'),
+                new ButtonBuilder().setCustomId('lock_ticket').setLabel('Khóa/Mở').setStyle(ButtonStyle.Primary).setEmoji('🔓')
+            );
+
+            await ticketChannel.send({ content: qrContent, embeds: [ticketEmbed], components: [ticketRow] });
+            await interaction.editReply({ content: `🎉 Ticket #${ticketIdStr} đã tạo: ${ticketChannel}`, ephemeral: true });
+        } catch (e) {
+            console.error(e);
+            await interaction.editReply({ content: '❌ Lỗi tạo vé!', ephemeral: true });
+        }
+    }
+
+    if (!interaction.isButton()) return;
+
+    if (interaction.customId === 'claim_ticket') {
+        if (!staffStats.has(member.id)) staffStats.set(member.id, { claims: 0, stars: 0 });
+        staffStats.get(member.id).claims++;
+        await interaction.reply({ content: `✅ **${member}** đã nhận xử lý ticket này!` });
+    }
+
+    if (interaction.customId === 'unclaim_ticket') {
+        await interaction.reply({ content: `↩️ **${member}** đã hủy nhận vé này, nhường lại cho nhân viên khác tiếp quản!` });
+    }
+
+    if (interaction.customId === 'lock_ticket') {
+        if (!member.permissions.has(PermissionsBitField.Flags.Administrator)) return interaction.reply({ content: '❌ Thiếu quyền!', ephemeral: true });
+        const currentOverwrite = channel.permissionOverwrites.cache.get(guild.id);
+        const isLocked = currentOverwrite && currentOverwrite.deny.has(PermissionsBitField.Flags.SendMessages);
+        await channel.permissionOverwrites.edit(guild.id, { SendMessages: isLocked ? null : false });
+        await interaction.reply({ content: isLocked ? '🔓 Đã mở khóa kênh!' : '🔒 Đã khóa kênh!' });
+    }
+
+    if (interaction.customId === 'close_ticket') {
+        const confirmEmbed = new EmbedBuilder().setTitle('⚠️ XÁC NHẬN ĐÓNG TICKET').setDescription('Bạn có chắc muốn đóng vé này?').setColor(0xFFA500);
+        const confirmRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('confirm_close').setLabel('Đồng ý').setStyle(ButtonStyle.Danger),
+            new ButtonBuilder().setCustomId('cancel_close').setLabel('Hủy').setStyle(ButtonStyle.Secondary)
+        );
+        await interaction.reply({ embeds: [confirmEmbed], components: [confirmRow] });
+    }
+
+    if (interaction.customId === 'cancel_close') {
+        await interaction.update({ content: '❌ Đã hủy.', embeds: [], components: [] });
+    }
+
+    if (interaction.customId === 'confirm_close') {
+        const ratingEmbed = new EmbedBuilder()
+            .setTitle('⭐ ĐÁNH GIÁ CHẤT LƯỢNG HỖ TRỢ')
+            .setDescription('Cảm ơn bạn đã sử dụng dịch vụ!\nHãy chọn số sao đánh giá bên dưới: 🌟')
+            .setColor(0xFFD700);
+
+        const ratingRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder().setCustomId('rate_1').setLabel('1 ⭐').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('rate_2').setLabel('2 ⭐').setStyle(ButtonStyle.Secondary),
+            new ButtonBuilder().setCustomId('rate_3').setLabel('3 ⭐').setStyle(ButtonStyle.Primary),
+            new ButtonBuilder().setCustomId('rate_4').setLabel('4 ⭐').setStyle(ButtonStyle.Success),
+            new ButtonBuilder().setCustomId('rate_5').setLabel('5 ⭐').setStyle(ButtonStyle.Success)
+        );
+
+        await interaction.update({ embeds: [ratingEmbed], components: [ratingRow] });
+    }
+
+    if (interaction.customId.startsWith('rate_')) {
+        const stars = interaction.customId.split('_')[1];
+
+        for (const [sId, data] of staffStats.entries()) {
+            data.stars += Number(stars);
+        }
+
+        const modal = new ModalBuilder()
+            .setCustomId(`feedback_modal_${stars}`)
+            .setTitle('✍️ Ý KIẾN ĐÓNG GÓP');
+
+        const feedbackInput = new TextInputBuilder()
+            .setCustomId('feedback_text')
+            .setLabel('Nhận xét chi tiết dịch vụ của chúng mình:')
+            .setStyle(TextInputStyle.Paragraph)
+            .setRequired(false)
+            .setPlaceholder('Nhập lời nhận xét (có thể bỏ qua)...');
+
+        modal.addComponents(new ActionRowBuilder().addComponents(feedbackInput));
+        await interaction.showModal(modal);
+    }
+});
+
+client.on('interactionCreate', async interaction => {
+    if (!interaction.isModalSubmit() || !interaction.customId.startsWith('feedback_modal_')) return;
+
+    const stars = interaction.customId.split('_')[2];
+    const feedback = interaction.fields.getTextInputValue('feedback_text') || 'Không có nhận xét';
+    const guild = interaction.guild;
+    const channel = interaction.channel;
+    const member = interaction.member;
+    const logChannelId = serverLogChannels.get(guild.id);
+
+    let resolvedCount = totalResolvedTickets.get(guild.id) || 0;
+    totalResolvedTickets.set(guild.id, ++resolvedCount);
+
+    await interaction.reply({ content: `❤️ Cảm ơn bạn đã đánh giá **${stars} sao**! Đang lưu lịch sử và xóa kênh sau 5 giây...`, ephemeral: true });
 
     try {
-        const member = await guild.members.fetch(user.id);
-        const role = guild.roles.cache.get(found.roleId);
-        if (role && member.roles.cache.has(role.id)) {
-            await member.roles.remove(role);
+        const transcriptBuffer = await generateTranscript(channel);
+        const attachment = new AttachmentBuilder(transcriptBuffer, { name: `transcript-${channel.name}.txt` });
+
+        if (logChannelId) {
+            const logChan = guild.channels.cache.get(logChannelId);
+            if (logChan) {
+                const logEmbed = new EmbedBuilder()
+                    .setTitle('📊 NHẬT KÝ ĐÓNG & ĐÁNH GIÁ TICKET')
+                    .addFields(
+                        { name: '🏷️ Kênh', value: `${channel.name}`, inline: true },
+                        { name: '⭐ Đánh giá', value: `${'⭐'.repeat(Number(stars))} (${stars}/5 sao)`, inline: true },
+                        { name: '💬 Nhận xét', value: `${feedback}`, inline: false }
+                    )
+                    .setColor(0x00FF00)
+                    .setTimestamp();
+
+                await logChan.send({ embeds: [logEmbed], files: [attachment] }).catch(() => {});
+            }
         }
-    } catch (error) {
-        console.error(error);
-    }
+
+        try {
+            const dmAttachment = new AttachmentBuilder(transcriptBuffer, { name: `transcript-${channel.name}.txt` });
+            await member.send({ content: `📄 Lịch sử vé tại **${guild.name}**:`, files: [dmAttachment] });
+        } catch (e) {}
+
+    } catch (e) { console.error(e); }
+
+    setTimeout(async () => {
+        try { await channel.delete(); } catch (error) {}
+    }, 5000);
 });
 
 client.login(DISCORD_TOKEN);
