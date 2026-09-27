@@ -268,7 +268,7 @@ client.on('interactionCreate', async interaction => {
                 .setColor(0x2B2D31);
 
             let qrContent = `${member} ${pingRoles}`;
-            if (categoryType === 'cat_muahang') {
+            if (categoryType === 'Tick Mua Hàng') {
                 // Tạo link VietQR tự động với thông tin TPBANK của má và hiển thị dạng ảnh trực tiếp trên Discord Embed
                 const qrImageUrl = `https://img.vietqr.io/image/TPB-31189838888-compact2.png?amount=0&addInfo=TICKET%20${ticketIdStr}&accountName=LE%20BAO%20TRUNG`;
                 ticketEmbed.addFields({ 
