@@ -39,8 +39,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'ĐIỀN_TOKEN_BOT_CỦA_BẠ
 const CLIENT_ID = process.env.CLIENT_ID || 'ĐIỀN_CLIENT_ID_CỦA_BOT_Ở_ĐÂY'; 
 const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID || 'ĐIỀN_ID_CATEGORY_VÀO_ĐÂY'; 
 
-// ID Discord của Chủ Bot (Bạn hãy thay thế chuỗi này bằng ID Discord cá nhân của bạn)
-const BOT_OWNER_ID = process.env.BOT_OWNER_ID || 'ĐIỀN_DISCORD_USER_ID_CỦA_BẠN_VÀO_ĐÂY';
+// ID Discord của Chủ Bot
+const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1065176214013444158';
 
 const serverSupportRoles = new Map();
 const serverLogChannels = new Map();
@@ -57,7 +57,7 @@ const ticketRefs = new Map();
 
 const serverTicketLimits = new Map();       
 const serverAutoCloseHours = new Map();     
-const customDatabaseVouchers = new Map(); // Lưu trữ kho mã giảm giá do Chủ bot tạo: Map(code -> discountValue)
+const customDatabaseVouchers = new Map(); 
 
 const commands = [
     // Lệnh độc quyền Chủ Bot (Setup & Quản trị hệ thống)
@@ -70,6 +70,21 @@ const commands = [
     new SlashCommandBuilder().setName('admin-auto-close-config').setDescription('[Chủ Bot] Cấu hình thời gian tự động đóng vé không hoạt động').addIntegerOption(o => o.setName('hours').setDescription('Số giờ (Nhập 0 để tắt)').setRequired(true)),
     new SlashCommandBuilder().setName('admin-note-history').setDescription('[Chủ Bot] Xem toàn bộ ghi chú nội bộ của staff theo user').addUserOption(o => o.setName('user').setDescription('User cần kiểm tra').setRequired(true)),
     new SlashCommandBuilder().setName('admin-staff-reset').setDescription('[Chủ Bot] Đặt lại toàn bộ điểm số, sao và XP của tất cả staff'),
+
+    // BỔ SUNG 2 LỆNH MỚI: /panel và /say (Dành cho Chủ Bot)
+    new SlashCommandBuilder()
+        .setName('panel')
+        .setDescription('[Chủ Bot] Gửi bảng thông báo dịch vụ hoặc menu tạo vé kèm nút bấm')
+        .addStringOption(o => o.setName('title').setDescription('Tiêu đề bảng thông báo').setRequired(true))
+        .addStringOption(o => o.setName('description').setDescription('Nội dung chi tiết').setRequired(true))
+        .addStringOption(o => o.setName('button_label').setDescription('Tên hiển thị trên nút bấm').setRequired(true))
+        .addStringOption(o => o.setName('button_custom_id').setDescription('Mã định danh (custom_id) của nút').setRequired(true)),
+
+    new SlashCommandBuilder()
+        .setName('say')
+        .setDescription('[Chủ Bot] Sai bot gửi một tin nhắn nội dung tùy chỉnh')
+        .addStringOption(o => o.setName('message').setDescription('Nội dung bạn muốn bot nói').setRequired(true))
+        .addChannelOption(o => o.setName('channel').setDescription('Kênh gửi tới (để trống nếu gửi kênh hiện tại)').addChannelTypes(ChannelType.GuildText).setRequired(false)),
 
     // Lệnh chung cho Staff & Thành viên
     new SlashCommandBuilder().setName('add').setDescription('Thêm người vào vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
@@ -129,9 +144,9 @@ client.on('interactionCreate', async interaction => {
     const { commandName, guild, member, user, channel } = interaction;
     const guildId = guild.id;
 
-    // HÀM KIỂM TRA QUYỀN CHỦ BOT CHO CÁC LỆNH QUẢN TRỊ / ADMIN
+    // KIỂM TRA QUYỀN CHỦ BOT CHO CÁC LỆNH QUẢN TRỊ / ADMIN
     const isOwner = user.id === BOT_OWNER_ID;
-    const restrictedCommands = ['addrole', 'setlog', 'sendticket', 'admin-create-voucher', 'admin-force-close', 'admin-set-limit', 'admin-auto-close-config', 'admin-note-history', 'admin-staff-reset'];
+    const restrictedCommands = ['addrole', 'setlog', 'sendticket', 'admin-create-voucher', 'admin-force-close', 'admin-set-limit', 'admin-auto-close-config', 'admin-note-history', 'admin-staff-reset', 'panel', 'say'];
     
     if (restrictedCommands.includes(commandName) && !isOwner) {
         return interaction.reply({ content: '❌ Chỉ có **Chủ Bot** mới có quyền thực thi lệnh này!', ephemeral: true });
@@ -166,12 +181,50 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: '✅ Đã gửi bảng chọn!', ephemeral: true });
     }
 
-    // LỆNH MỚI: Chủ bot tạo mã giảm giá riêng vào hệ thống
     if (commandName === 'admin-create-voucher') {
         const code = interaction.options.getString('code').toUpperCase();
         const discount = interaction.options.getString('discount');
         customDatabaseVouchers.set(code, discount);
         await interaction.reply({ content: `🎟️ Đã tạo và lưu thành công mã giảm giá mới:\n- Mã: **${code}**\n- Mức giảm: **${discount}**`, ephemeral: true });
+    }
+
+    // XỬ LÝ LỆNH /PANEL
+    if (commandName === 'panel') {
+        const title = interaction.options.getString('title');
+        const description = interaction.options.getString('description');
+        const buttonLabel = interaction.options.getString('button_label');
+        const buttonCustomId = interaction.options.getString('button_custom_id');
+
+        const embed = new EmbedBuilder()
+            .setTitle(title)
+            .setDescription(description)
+            .setColor(0x0099ff)
+            .setFooter({ text: `Được vận hành bởi ${client.user.username}`, iconURL: client.user.displayAvatarURL() });
+
+        const row = new ActionRowBuilder()
+            .addComponents(
+                new ButtonBuilder()
+                    .setCustomId(buttonCustomId)
+                    .setLabel(buttonLabel)
+                    .setStyle(ButtonStyle.Success)
+            );
+
+        await interaction.channel.send({ embeds: [embed], components: [row] });
+        await interaction.reply({ content: '✅ Đã tạo Panel thành công!', ephemeral: true });
+    }
+
+    // XỬ LÝ LỆNH /SAY
+    if (commandName === 'say') {
+        const message = interaction.options.getString('message');
+        const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
+
+        try {
+            await targetChannel.send(message);
+            await interaction.reply({ content: `✅ Đã gửi tin nhắn thành công vào kênh ${targetChannel} !`, ephemeral: true });
+        } catch (error) {
+            console.error(error);
+            await interaction.reply({ content: '❌ Có lỗi xảy ra khi gửi tin nhắn (Bot có thể thiếu quyền).', ephemeral: true });
+        }
     }
 
     if (commandName === 'add') {
@@ -262,7 +315,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: `📈 **THỐNG KÊ HỆ THỐNG TICKET SERVER:**\n- Số vé đang mở hiện tại: **${openTickets} vé**\n- Tổng số vé đã xử lý & đóng: **${resolved} vé**`, ephemeral: true });
     }
 
-    // Sử dụng mã giảm giá đã tạo từ database
     if (commandName === 'voucher') {
         if (!channel.name.includes('ticket-')) return interaction.reply({ content: '❌ Lệnh này chỉ dùng trong kênh vé!', ephemeral: true });
         const code = interaction.options.getString('code').toUpperCase();
@@ -409,7 +461,6 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'lock_ticket') {
-        // Chỉ Chủ bot mới được quyền khóa/mở kênh khẩn cấp qua nút bấm
         if (interaction.user.id !== BOT_OWNER_ID) {
             return interaction.reply({ content: '❌ Chỉ có Chủ Bot mới có quyền khóa/mở kênh này!', ephemeral: true });
         }
