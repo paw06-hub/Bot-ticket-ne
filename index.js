@@ -39,8 +39,8 @@ const DISCORD_TOKEN = process.env.DISCORD_TOKEN || 'ĐIỀN_TOKEN_BOT_CỦA_BẠ
 const CLIENT_ID = process.env.CLIENT_ID || 'ĐIỀN_CLIENT_ID_CỦA_BOT_Ở_ĐÂY'; 
 const TICKET_CATEGORY_ID = process.env.TICKET_CATEGORY_ID || 'ĐIỀN_ID_CATEGORY_VÀO_ĐÂY'; 
 
-// ID Discord của Chủ Bot
-const BOT_OWNER_ID = process.env.BOT_OWNER_ID || '1065176214013444158';
+// DANH SÁCH ID CÁC CHỦ BOT (Thêm ID vào trong ngoặc vuông này, ngăn cách bằng dấu phẩy)
+const BOT_OWNER_IDS = ['1065176214013444158', 'ĐIỀN_ID_CHỦ_BOT_THỨ_2_VÀO_ĐÂY'];
 
 const serverSupportRoles = new Map();
 const serverLogChannels = new Map();
@@ -60,7 +60,6 @@ const serverAutoCloseHours = new Map();
 const customDatabaseVouchers = new Map(); 
 
 const commands = [
-    // Lệnh độc quyền Chủ Bot (Setup & Quản trị hệ thống)
     new SlashCommandBuilder().setName('addrole').setDescription('[Chủ Bot] Thêm Role hỗ trợ').addRoleOption(o => o.setName('role').setDescription('Role').setRequired(true)),
     new SlashCommandBuilder().setName('setlog').setDescription('[Chủ Bot] Cài kênh log').addChannelOption(o => o.setName('channel').setDescription('Kênh').addChannelTypes(ChannelType.GuildText).setRequired(true)),
     new SlashCommandBuilder().setName('sendticket').setDescription('[Chủ Bot] Gửi bảng tạo ticket'),
@@ -71,7 +70,6 @@ const commands = [
     new SlashCommandBuilder().setName('admin-note-history').setDescription('[Chủ Bot] Xem toàn bộ ghi chú nội bộ của staff theo user').addUserOption(o => o.setName('user').setDescription('User cần kiểm tra').setRequired(true)),
     new SlashCommandBuilder().setName('admin-staff-reset').setDescription('[Chủ Bot] Đặt lại toàn bộ điểm số, sao và XP của tất cả staff'),
 
-    // BỔ SUNG 2 LỆNH MỚI: /panel và /say (Dành cho Chủ Bot)
     new SlashCommandBuilder()
         .setName('panel')
         .setDescription('[Chủ Bot] Gửi bảng thông báo dịch vụ hoặc menu tạo vé kèm nút bấm')
@@ -86,7 +84,6 @@ const commands = [
         .addStringOption(o => o.setName('message').setDescription('Nội dung bạn muốn bot nói').setRequired(true))
         .addChannelOption(o => o.setName('channel').setDescription('Kênh gửi tới (để trống nếu gửi kênh hiện tại)').addChannelTypes(ChannelType.GuildText).setRequired(false)),
 
-    // Lệnh chung cho Staff & Thành viên
     new SlashCommandBuilder().setName('add').setDescription('Thêm người vào vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
     new SlashCommandBuilder().setName('remove').setDescription('Xóa người khỏi vé').addUserOption(o => o.setName('user').setDescription('User').setRequired(true)),
     new SlashCommandBuilder().setName('transfer').setDescription('Chuyển vé cho staff').addUserOption(o => o.setName('staff').setDescription('Staff').setRequired(true)),
@@ -144,8 +141,8 @@ client.on('interactionCreate', async interaction => {
     const { commandName, guild, member, user, channel } = interaction;
     const guildId = guild.id;
 
-    // KIỂM TRA QUYỀN CHỦ BOT CHO CÁC LỆNH QUẢN TRỊ / ADMIN
-    const isOwner = user.id === BOT_OWNER_ID;
+    // KIỂM TRA QUYỀN CHỦ BOT (KIỂM TRA TRONG MẢNG BOT_OWNER_IDS)
+    const isOwner = BOT_OWNER_IDS.includes(user.id);
     const restrictedCommands = ['addrole', 'setlog', 'sendticket', 'admin-create-voucher', 'admin-force-close', 'admin-set-limit', 'admin-auto-close-config', 'admin-note-history', 'admin-staff-reset', 'panel', 'say'];
     
     if (restrictedCommands.includes(commandName) && !isOwner) {
@@ -188,7 +185,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: `🎟️ Đã tạo và lưu thành công mã giảm giá mới:\n- Mã: **${code}**\n- Mức giảm: **${discount}**`, ephemeral: true });
     }
 
-    // XỬ LÝ LỆNH /PANEL
     if (commandName === 'panel') {
         const title = interaction.options.getString('title');
         const description = interaction.options.getString('description');
@@ -213,7 +209,6 @@ client.on('interactionCreate', async interaction => {
         await interaction.reply({ content: '✅ Đã tạo Panel thành công!', ephemeral: true });
     }
 
-    // XỬ LÝ LỆNH /SAY
     if (commandName === 'say') {
         const message = interaction.options.getString('message');
         const targetChannel = interaction.options.getChannel('channel') || interaction.channel;
@@ -461,7 +456,8 @@ client.on('interactionCreate', async interaction => {
     }
 
     if (interaction.customId === 'lock_ticket') {
-        if (interaction.user.id !== BOT_OWNER_ID) {
+        const isOwner = BOT_OWNER_IDS.includes(interaction.user.id);
+        if (!isOwner) {
             return interaction.reply({ content: '❌ Chỉ có Chủ Bot mới có quyền khóa/mở kênh này!', ephemeral: true });
         }
         const currentOverwrite = channel.permissionOverwrites.cache.get(guild.id);
